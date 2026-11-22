@@ -1,4 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
+import { Type } from '@google/genai';
+import { generateWithFallback } from './gemini';
 import type { GeneratedScript } from './types';
 
 /**
@@ -11,13 +12,6 @@ export async function generateScript(
   author: string,
   researchContent: string,
 ): Promise<GeneratedScript> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY env var is not set');
-  }
-
-  const client = new GoogleGenAI({ apiKey });
-
   const prompt = `You are a top-performing Marathi YouTube content creator specialising in book summaries.
 
 Using the research below, produce a COMPLETE YouTube video package for the book "${bookTitle}" by ${author}.
@@ -53,15 +47,15 @@ ${researchContent}
 - Write pure narration text only`;
 
   const responseSchema = {
-    type: 'object' as const,
+    type: Type.OBJECT,
     properties: {
-      youtube_title: { type: 'string' as const },
-      youtube_description: { type: 'string' as const },
+      youtube_title: { type: Type.STRING },
+      youtube_description: { type: Type.STRING },
       youtube_tags: {
-        type: 'array' as const,
-        items: { type: 'string' as const },
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
       },
-      script_marathi: { type: 'string' as const },
+      script_marathi: { type: Type.STRING },
     },
     required: [
       'youtube_title',
@@ -71,22 +65,22 @@ ${researchContent}
     ],
   };
 
-  const interaction = await client.interactions.create({
-    model: 'gemini-4-hydrogen',
-    input: prompt,
-    response_mime_type: 'application/json',
-    response_format: {
-      type: 'json_schema',
-      json_schema: { schema: responseSchema },
-    } as any,
+  const rawText = await generateWithFallback(prompt, {
+    responseMimeType: 'application/json',
+    responseSchema,
   });
 
-  const rawText = interaction.output_text;
   if (!rawText) {
     throw new Error('Gemini returned no output for script generation');
   }
 
-  const parsed: GeneratedScript = JSON.parse(rawText);
+  // Strip possible markdown code fence wrappers
+  const cleanedJson = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const parsed: GeneratedScript = JSON.parse(cleanedJson);
 
   // Clean up any residual markdown symbols the model may have included
   parsed.script_marathi = cleanScript(parsed.script_marathi);

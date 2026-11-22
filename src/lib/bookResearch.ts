@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { generateWithFallback } from './gemini';
 import { getServerSupabase } from './supabase';
 
 // ─── Book Cover Fetching ─────────────────────────────────────────────────────
@@ -123,13 +123,6 @@ export async function researchBookContent(
     return sourceText.trim();
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY env var is not set');
-  }
-
-  const client = new GoogleGenAI({ apiKey });
-
   const prompt = `You are a meticulous book researcher. Research the book "${title}"${author ? ` by ${author}` : ''}.
 
 Provide a comprehensive summary covering:
@@ -142,15 +135,9 @@ Provide a comprehensive summary covering:
 
 Write in English. Be detailed — this research will be used to generate a Marathi YouTube narration script.`;
 
-  const interaction = await client.interactions.create({
-    model: 'gemini-4-hydrogen',
-    input: prompt,
-    tools: [{ google_search: {} } as any],
-  });
-
-  const output = interaction.output_text;
-  if (!output) {
-    throw new Error('Gemini returned no output for book research');
+  const output = await generateWithFallback(prompt);
+  if (!output || !output.trim()) {
+    throw new Error('Gemini returned empty output for book research');
   }
 
   return output;
