@@ -9,15 +9,15 @@ export async function triggerVideoWorker(
   bookId: string,
   stages?: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const token = process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_REPO_OWNER;
-  const repo = process.env.GITHUB_REPO_NAME;
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER || 'pankajmudriwar';
+  const repo = process.env.GITHUB_REPO_NAME || 'book-summary-youtube-agent';
 
-  if (!token || !owner || !repo) {
+  if (!token) {
     return {
       success: false,
       error:
-        'Missing one or more required env vars: GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME',
+        'Missing required env var: GITHUB_TOKEN (Personal Access Token with actions:write scope)',
     };
   }
 

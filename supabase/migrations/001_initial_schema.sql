@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS pipeline_logs (
                 CHECK (stage IN ('cron','research','script','voice','captions','render','upload')),
   level       text        NOT NULL DEFAULT 'info'
                 CHECK (level IN ('info','warning','error')),
+  status      text,
   message     text        NOT NULL,
   metadata    jsonb,
   created_at  timestamptz NOT NULL DEFAULT now()

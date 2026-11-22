@@ -12,9 +12,11 @@ async function logPipeline(
   status: string,
   message: string
 ) {
+  const level = ['error', 'warning'].includes(status) ? status : 'info';
   await supabase.from("pipeline_logs").insert({
     book_id: bookId,
     stage,
+    level,
     status,
     message,
   });

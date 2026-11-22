@@ -5,16 +5,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
 
   if (error) {
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=error&message=${encodeURIComponent(error)}`
+      `${baseUrl}/settings?youtube=error&message=${encodeURIComponent(error)}`
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=error&message=no_code`
+      `${baseUrl}/settings?youtube=error&message=no_code`
     );
   }
 
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
         code,
         client_id: process.env.YOUTUBE_CLIENT_ID!,
         client_secret: process.env.YOUTUBE_CLIENT_SECRET!,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/youtube/callback`,
+        redirect_uri: `${baseUrl}/api/auth/youtube/callback`,
         grant_type: "authorization_code",
       }),
     });
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       const errBody = await tokenResponse.text();
       console.error("Token exchange failed:", errBody);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=error&message=token_exchange_failed`
+        `${baseUrl}/settings?youtube=error&message=token_exchange_failed`
       );
     }
 
@@ -75,17 +76,17 @@ export async function GET(request: Request) {
     if (dbError) {
       console.error("Failed to save YouTube tokens:", dbError);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=error&message=db_save_failed`
+        `${baseUrl}/settings?youtube=error&message=db_save_failed`
       );
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=connected`
+      `${baseUrl}/settings?youtube=connected`
     );
   } catch (err) {
     console.error("YouTube callback error:", err);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/settings?youtube=error&message=unexpected_error`
+      `${baseUrl}/settings?youtube=error&message=unexpected_error`
     );
   }
 }
