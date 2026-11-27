@@ -47,7 +47,9 @@ export function checkSystemReadiness(settings: AgentSettings | null): ReadinessC
   if (settings?.voice_clone_mode === "external_api") {
     voiceApi = Boolean(settings.voice_clone_api_url && settings.voice_clone_api_url.trim());
     if (!voiceApi) {
-      missing.push("External Voice Clone API URL is required when voice clone mode is set to 'external_api'");
+      missing.push(
+        "External Voice Clone API URL is missing (in Settings, switch to 'GitHub Action Local Runner' or provide your GPU endpoint URL)"
+      );
     }
   }
 
