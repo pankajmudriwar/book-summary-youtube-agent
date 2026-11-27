@@ -39,23 +39,15 @@ export function checkSystemReadiness(settings: AgentSettings | null): ReadinessC
   }
 
   const voiceSample = Boolean(settings?.voice_sample_url && settings.voice_sample_url.trim());
-  if (!voiceSample) {
-    missing.push("Voice sample audio has not been uploaded in Settings");
-  }
 
   let voiceApi = true;
   if (settings?.voice_clone_mode === "external_api") {
     voiceApi = Boolean(settings.voice_clone_api_url && settings.voice_clone_api_url.trim());
-    if (!voiceApi) {
-      missing.push(
-        "External Voice Clone API URL is missing (in Settings, switch to 'GitHub Action Local Runner' or provide your GPU endpoint URL)"
-      );
-    }
   }
 
   const youtube = Boolean(settings?.youtube_refresh_token && settings.youtube_refresh_token.trim());
   if (!youtube) {
-    missing.push("YouTube channel is not connected in Settings");
+    missing.push("YouTube channel is not connected in Settings (Click 'Connect YouTube Channel' in Settings)");
   }
 
   const cronEnabled = Boolean(settings?.is_daily_automation_enabled);

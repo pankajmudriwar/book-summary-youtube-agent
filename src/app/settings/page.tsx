@@ -27,6 +27,10 @@ export default function SettingsPage() {
   // Voice sample upload
   const [uploadingVoice, setUploadingVoice] = useState(false);
 
+  // YouTube OAuth credentials input state
+  const [ytClientId, setYtClientId] = useState("");
+  const [ytClientSecret, setYtClientSecret] = useState("");
+
   // Voice cloning test
   const [testingVoice, setTestingVoice] = useState(false);
   const [testAudioUrl, setTestAudioUrl] = useState<string | null>(null);
@@ -47,7 +51,35 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadSettings();
+
+    // Check URL parameters for YouTube OAuth status
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("youtube") === "connected") {
+      setMessage({
+        type: "success",
+        text: "YouTube Channel connected successfully! Channel is now authorized for publishing.",
+      });
+    } else if (params.get("youtube") === "error") {
+      const errMsg = params.get("message") || "OAuth authorization failed";
+      setMessage({
+        type: "error",
+        text: `YouTube connection failed (${errMsg}). Please check OAuth credentials and try again.`,
+      });
+    }
+
+    // Load saved client credentials from local storage
+    const savedId = localStorage.getItem("yt_client_id");
+    const savedSecret = localStorage.getItem("yt_client_secret");
+    if (savedId) setYtClientId(savedId);
+    if (savedSecret) setYtClientSecret(savedSecret);
   }, []);
+
+  function handleSaveYtCreds(id: string, secret: string) {
+    setYtClientId(id);
+    setYtClientSecret(secret);
+    if (id) localStorage.setItem("yt_client_id", id.trim());
+    if (secret) localStorage.setItem("yt_client_secret", secret.trim());
+  }
 
   async function handleSaveSettings(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -414,6 +446,42 @@ export default function SettingsPage() {
           Connect your Google account with YouTube Data API v3 permissions. When authorized, the worker uploads 1080p rendered summaries directly to your YouTube channel.
         </p>
 
+        {/* OAuth Client ID and Secret inputs */}
+        <div className="p-4 rounded-xl bg-[#09090B] border border-white/[0.08] space-y-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 font-mono block">
+            Google Cloud Console OAuth App Credentials
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1 font-mono">
+                OAuth Client ID
+              </label>
+              <input
+                type="text"
+                value={ytClientId}
+                onChange={(e) => handleSaveYtCreds(e.target.value, ytClientSecret)}
+                placeholder="Paste your Google OAuth Client ID (.apps.googleusercontent.com)"
+                className="w-full bg-[#111114] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1 font-mono">
+                OAuth Client Secret
+              </label>
+              <input
+                type="password"
+                value={ytClientSecret}
+                onChange={(e) => handleSaveYtCreds(ytClientId, e.target.value)}
+                placeholder="Paste your Google OAuth Client Secret (GOCSPX-...)"
+                className="w-full bg-[#111114] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-zinc-500 font-mono">
+            Redirect URI in Google Cloud Console must be: <code className="text-indigo-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/auth/youtube/callback</code>
+          </p>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#09090B] border border-white/[0.08]">
           <div>
             <div className="flex items-center gap-2">
@@ -439,7 +507,13 @@ export default function SettingsPage() {
           </div>
 
           <a
-            href="/api/auth/youtube/connect"
+            href={
+              ytClientId
+                ? `/api/auth/youtube/connect?client_id=${encodeURIComponent(
+                    ytClientId.trim()
+                  )}&client_secret=${encodeURIComponent(ytClientSecret.trim())}`
+                : `/api/auth/youtube/connect`
+            }
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-all shadow-lg shadow-rose-600/20"
           >
             <YoutubeIcon className="w-4 h-4" />

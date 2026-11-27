@@ -19,6 +19,30 @@ export async function GET(request: Request) {
     );
   }
 
+  // Retrieve client credentials from process.env or fallback cookie
+  let clientId = (process.env.YOUTUBE_CLIENT_ID || "").trim();
+  let clientSecret = (process.env.YOUTUBE_CLIENT_SECRET || "").trim();
+
+  // Try reading from yt_oauth_ctx cookie if missing from env
+  const cookieHeader = request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/yt_oauth_ctx=([^;]+)/);
+  if (match && match[1]) {
+    try {
+      const decoded = Buffer.from(decodeURIComponent(match[1]), "base64").toString("utf-8");
+      const parsed = JSON.parse(decoded);
+      if (!clientId && parsed.clientId) clientId = parsed.clientId;
+      if (!clientSecret && parsed.clientSecret) clientSecret = parsed.clientSecret;
+    } catch (e) {
+      console.warn("Could not parse yt_oauth_ctx cookie:", e);
+    }
+  }
+
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(
+      `${baseUrl}/settings?youtube=error&message=missing_client_credentials`
+    );
+  }
+
   try {
     // Exchange authorization code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -26,8 +50,8 @@ export async function GET(request: Request) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id: process.env.YOUTUBE_CLIENT_ID!,
-        client_secret: process.env.YOUTUBE_CLIENT_SECRET!,
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: `${baseUrl}/api/auth/youtube/callback`,
         grant_type: "authorization_code",
       }),
@@ -44,7 +68,7 @@ export async function GET(request: Request) {
     const tokens = await tokenResponse.json();
 
     // Fetch channel info
-    let channelName = "Unknown Channel";
+    let channelName = "YouTube Channel";
     try {
       const channelResponse = await fetch(
         "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
@@ -64,13 +88,18 @@ export async function GET(request: Request) {
 
     // Save tokens to agent_settings
     const supabase = getServerSupabase();
+    const updatePayload: Record<string, any> = {
+      youtube_channel_name: channelName,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (tokens.refresh_token) {
+      updatePayload.youtube_refresh_token = tokens.refresh_token;
+    }
+
     const { error: dbError } = await supabase
       .from("agent_settings")
-      .update({
-        youtube_refresh_token: tokens.refresh_token,
-        youtube_channel_name: channelName,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", 1);
 
     if (dbError) {
@@ -80,9 +109,17 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.redirect(
+    const redirectResponse = NextResponse.redirect(
       `${baseUrl}/settings?youtube=connected`
     );
+
+    // Clear the temporary auth cookie
+    redirectResponse.cookies.set("yt_oauth_ctx", "", {
+      maxAge: 0,
+      path: "/",
+    });
+
+    return redirectResponse;
   } catch (err) {
     console.error("YouTube callback error:", err);
     return NextResponse.redirect(
