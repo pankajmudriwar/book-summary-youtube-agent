@@ -5,19 +5,28 @@
  * @param stages  - Optional comma-separated pipeline stages to run
  *                  (defaults to the full pipeline when omitted)
  */
+export interface DispatchResult {
+  success: boolean;
+  error?: string;
+  statusCode?: number;
+  actionsUrl: string;
+}
+
 export async function triggerVideoWorker(
   bookId: string,
   stages?: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<DispatchResult> {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const owner = process.env.GITHUB_REPO_OWNER || 'pankajmudriwar';
   const repo = process.env.GITHUB_REPO_NAME || 'book-summary-youtube-agent';
+  const actionsUrl = `https://github.com/${owner}/${repo}/actions`;
 
   if (!token) {
     return {
       success: false,
       error:
-        'Missing required env var: GITHUB_TOKEN (Personal Access Token with actions:write scope)',
+        'Missing required env var: GITHUB_TOKEN (Personal Access Token with repo & workflow scope)',
+      actionsUrl,
     };
   }
 
@@ -35,6 +44,7 @@ export async function triggerVideoWorker(
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
+        'User-Agent': 'Marathi-YT-Studio',
       },
       body: JSON.stringify({
         ref: 'main',
@@ -43,16 +53,22 @@ export async function triggerVideoWorker(
     });
 
     if (response.status === 204) {
-      return { success: true };
+      return { success: true, actionsUrl, statusCode: 204 };
     }
 
     const body = await response.text();
     return {
       success: false,
-      error: `GitHub API responded with ${response.status}: ${body}`,
+      error: `GitHub API error (HTTP ${response.status}): ${body}`,
+      statusCode: response.status,
+      actionsUrl,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: `Failed to dispatch workflow: ${message}` };
+    return {
+      success: false,
+      error: `Failed to dispatch GitHub Actions workflow: ${message}`,
+      actionsUrl,
+    };
   }
 }

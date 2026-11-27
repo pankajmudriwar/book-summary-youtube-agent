@@ -4,6 +4,9 @@ import { verifyAdmin } from "@/lib/auth";
 import { fetchBookCover, researchBookContent } from "@/lib/bookResearch";
 import { generateScript } from "@/lib/scriptGenerator";
 import { triggerVideoWorker } from "@/lib/github";
+import { checkSystemReadiness } from "@/lib/readiness";
+
+export const maxDuration = 60;
 
 async function logPipeline(
   supabase: ReturnType<typeof getServerSupabase>,
@@ -12,7 +15,7 @@ async function logPipeline(
   status: string,
   message: string
 ) {
-  const level = ['error', 'warning'].includes(status) ? status : 'info';
+  const level = ["error", "warning"].includes(status) ? status : "info";
   await supabase.from("pipeline_logs").insert({
     book_id: bookId,
     stage,
@@ -30,8 +33,26 @@ export async function POST(request: Request) {
   const supabase = getServerSupabase();
 
   try {
-    let bookId: string | undefined;
+    // 1. Fetch settings & run pre-flight checks
+    const { data: settings } = await supabase
+      .from("agent_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
 
+    const readiness = checkSystemReadiness(settings);
+    if (!readiness.isReady) {
+      return NextResponse.json(
+        {
+          error: "Pre-flight readiness checks failed",
+          missing: readiness.missing,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 2. Select book to process
+    let bookId: string | undefined;
     try {
       const body = await request.json();
       bookId = body.book_id;
@@ -70,10 +91,14 @@ export async function POST(request: Request) {
       book = data;
     }
 
-    // Lock book to researching
+    // 3. Lock book to researching
     await supabase
       .from("books_queue")
-      .update({ status: "researching", updated_at: new Date().toISOString() })
+      .update({
+        status: "researching",
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", book.id);
 
     await logPipeline(
@@ -81,17 +106,17 @@ export async function POST(request: Request) {
       book.id,
       "research",
       "started",
-      `Manual pipeline triggered for: ${book.book_title}`
+      `Pipeline triggered for: "${book.book_title}"`
     );
 
-    // Stage 1: Fetch book cover
+    // 4. Stage 1: Fetch book cover if missing
     try {
       if (!book.cover_image_url) {
         const coverUrl = await fetchBookCover(book.book_title, book.author);
         if (coverUrl) {
           await supabase
             .from("books_queue")
-            .update({ cover_image_url: coverUrl })
+            .update({ cover_image_url: coverUrl, updated_at: new Date().toISOString() })
             .eq("id", book.id);
         }
         await logPipeline(
@@ -99,7 +124,7 @@ export async function POST(request: Request) {
           book.id,
           "cover_fetch",
           "completed",
-          coverUrl ? `Cover fetched: ${coverUrl}` : "No cover found"
+          coverUrl ? `Cover fetched: ${coverUrl}` : "Typographic cover generated"
         );
       }
     } catch (coverErr) {
@@ -108,11 +133,11 @@ export async function POST(request: Request) {
         book.id,
         "cover_fetch",
         "warning",
-        `Cover fetch failed (non-fatal): ${coverErr instanceof Error ? coverErr.message : String(coverErr)}`
+        `Cover fetch non-fatal notice: ${coverErr instanceof Error ? coverErr.message : String(coverErr)}`
       );
     }
 
-    // Stage 2: Content research
+    // 5. Stage 2: Content research
     let researchContent: string;
     try {
       researchContent = await researchBookContent(
@@ -125,27 +150,27 @@ export async function POST(request: Request) {
         book.id,
         "research",
         "completed",
-        `Research completed (${researchContent.length} chars)`
+        `Research completed (${researchContent.length} chars analyzed)`
       );
     } catch (researchErr) {
+      const errorMsg = researchErr instanceof Error ? researchErr.message : String(researchErr);
       await supabase
         .from("books_queue")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .update({
+          status: "failed",
+          error_message: `Research error: ${errorMsg}`,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", book.id);
-      await logPipeline(
-        supabase,
-        book.id,
-        "research",
-        "failed",
-        `Research failed: ${researchErr instanceof Error ? researchErr.message : String(researchErr)}`
-      );
+
+      await logPipeline(supabase, book.id, "research", "failed", `Research failed: ${errorMsg}`);
       return NextResponse.json(
-        { error: "Research stage failed" },
+        { error: `Research stage failed: ${errorMsg}` },
         { status: 500 }
       );
     }
 
-    // Stage 3: Script generation
+    // 6. Stage 3: Script generation
     try {
       const scriptResult = await generateScript(
         book.book_title,
@@ -170,59 +195,82 @@ export async function POST(request: Request) {
         book.id,
         "script",
         "completed",
-        `Script generated: "${scriptResult.youtube_title}"`
+        `Marathi script generated: "${scriptResult.youtube_title}"`
       );
     } catch (scriptErr) {
+      const errorMsg = scriptErr instanceof Error ? scriptErr.message : String(scriptErr);
       await supabase
         .from("books_queue")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .update({
+          status: "failed",
+          error_message: `Script error: ${errorMsg}`,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", book.id);
-      await logPipeline(
-        supabase,
-        book.id,
-        "script",
-        "failed",
-        `Script generation failed: ${scriptErr instanceof Error ? scriptErr.message : String(scriptErr)}`
-      );
+
+      await logPipeline(supabase, book.id, "script", "failed", `Script generation failed: ${errorMsg}`);
       return NextResponse.json(
-        { error: "Script generation failed" },
+        { error: `Script generation failed: ${errorMsg}` },
         { status: 500 }
       );
     }
 
-    // Stage 4: Dispatch GitHub Actions
-    try {
-      await triggerVideoWorker(book.id);
+    // 7. Stage 4: Dispatch GitHub Actions worker
+    const dispatchResult = await triggerVideoWorker(book.id);
+    if (!dispatchResult.success) {
+      const errorMsg = dispatchResult.error || "GitHub Actions workflow dispatch rejected";
+      await supabase
+        .from("books_queue")
+        .update({
+          status: "failed",
+          error_message: errorMsg,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", book.id);
+
       await logPipeline(
         supabase,
         book.id,
         "dispatch",
-        "completed",
-        "GitHub Actions workflow dispatched"
+        "error",
+        `GitHub Actions dispatch failed (HTTP ${dispatchResult.statusCode || "unknown"}): ${errorMsg}`
       );
-    } catch (dispatchErr) {
-      await logPipeline(
-        supabase,
-        book.id,
-        "dispatch",
-        "failed",
-        `Dispatch failed: ${dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr)}`
-      );
+
       return NextResponse.json(
-        { error: "GitHub Actions dispatch failed" },
-        { status: 500 }
+        {
+          error: errorMsg,
+          actionsUrl: dispatchResult.actionsUrl,
+        },
+        { status: 502 }
       );
     }
+
+    await supabase
+      .from("books_queue")
+      .update({
+        status: "voicing",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", book.id);
+
+    await logPipeline(
+      supabase,
+      book.id,
+      "dispatch",
+      "completed",
+      `Worker dispatched successfully. Track in GitHub Actions: ${dispatchResult.actionsUrl}`
+    );
 
     return NextResponse.json({
       message: "Pipeline triggered successfully",
       book_id: book.id,
       book_title: book.book_title,
+      actionsUrl: dispatchResult.actionsUrl,
     });
   } catch (err) {
     console.error("Pipeline trigger error:", err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 }
     );
   }

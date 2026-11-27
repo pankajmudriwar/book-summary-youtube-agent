@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { verifyAdmin } from "@/lib/auth";
+import { checkSystemReadiness } from "@/lib/readiness";
 
 export async function GET(request: Request) {
   if (!verifyAdmin(request)) {
@@ -18,7 +19,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  const readiness = checkSystemReadiness(data);
+  return NextResponse.json({ ...data, readiness });
 }
 
 export async function PATCH(request: Request) {
@@ -37,11 +39,12 @@ export async function PATCH(request: Request) {
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
-    return NextResponse.json(data);
+  const readiness = checkSystemReadiness(data);
+  return NextResponse.json({ ...data, readiness });
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }

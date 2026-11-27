@@ -11,9 +11,7 @@ import {
   Check,
   AlertCircle,
   Play,
-  ExternalLink,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import YoutubeIcon from "@/components/YoutubeIcon";
 
@@ -71,7 +69,7 @@ export default function SettingsPage() {
       }
 
       setSettings(data);
-      setMessage({ type: "success", text: "Settings updated successfully" });
+      setMessage({ type: "success", text: "Settings saved successfully" });
     } catch (err: unknown) {
       setMessage({
         type: "error",
@@ -103,7 +101,7 @@ export default function SettingsPage() {
         throw new Error(data.error || "Voice upload failed");
       }
 
-      setMessage({ type: "success", text: "Voice sample uploaded successfully" });
+      setMessage({ type: "success", text: "Voice sample uploaded successfully to Supabase Storage" });
       loadSettings();
     } catch (err: unknown) {
       setMessage({
@@ -150,53 +148,111 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-gray-500">
-        <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-2" />
-        <span>Loading settings...</span>
+      <div className="p-16 text-center text-zinc-500 font-mono text-xs">
+        <div className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
+        <span>Loading studio configuration...</span>
       </div>
     );
   }
 
   if (!settings) {
     return (
-      <div className="p-8 text-center text-red-400 bg-[#151C2C] rounded-2xl border border-red-500/20">
-        Could not load agent settings. Please ensure database tables are created.
+      <div className="p-8 text-center text-rose-400 bg-[#111114] rounded-2xl border border-rose-500/25 font-mono text-xs">
+        Could not load agent settings. Please ensure database tables and migrations are initialized.
       </div>
     );
   }
 
+  const readiness = settings.readiness;
+
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="max-w-4xl space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Settings className="w-7 h-7 text-blue-400" />
-          <span>Agent Configuration & Integrations</span>
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            System Preferences
+          </span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5 mt-2">
+          <Settings className="w-7 h-7 text-indigo-400" />
+          <span>Studio Settings & Integrations</span>
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Configure reference voice cloning, YouTube OAuth, automation schedules, and rendering preferences
+        <p className="text-sm text-zinc-400 mt-0.5">
+          Configure reference voice cloning, YouTube OAuth channel, automation cadence, and rendering format
         </p>
       </div>
 
+      {/* Live System Readiness Overview Card */}
+      {readiness && (
+        <div className="p-5 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
+              System Pre-Flight Health Check
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
+                readiness.isReady
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+              }`}
+            >
+              {readiness.isReady ? "READY TO PUBLISH" : "CONFIGURATION REQUIRED"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            {/* Gemini */}
+            <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
+              <span className="text-zinc-400">Gemini API</span>
+              <span className={readiness.checks.geminiKey ? "text-emerald-400" : "text-rose-400"}>
+                {readiness.checks.geminiKey ? "Connected" : "Missing"}
+              </span>
+            </div>
+            {/* GitHub */}
+            <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
+              <span className="text-zinc-400">GitHub Actions</span>
+              <span className={readiness.checks.githubConfig ? "text-emerald-400" : "text-rose-400"}>
+                {readiness.checks.githubConfig ? "Configured" : "Missing"}
+              </span>
+            </div>
+            {/* Voice */}
+            <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
+              <span className="text-zinc-400">Voice Sample</span>
+              <span className={readiness.checks.voiceSample ? "text-emerald-400" : "text-amber-400"}>
+                {readiness.checks.voiceSample ? "Ready" : "Missing"}
+              </span>
+            </div>
+            {/* YouTube */}
+            <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
+              <span className="text-zinc-400">YouTube Auth</span>
+              <span className={readiness.checks.youtubeConnected ? "text-emerald-400" : "text-rose-400"}>
+                {readiness.checks.youtubeConnected ? "Connected" : "Needed"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div
-          className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-sm ${
+          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-mono ${
             message.type === "success"
-              ? "bg-green-500/10 border-green-500/20 text-green-300"
-              : "bg-red-500/10 border-red-500/20 text-red-300"
+              ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
+              : "bg-rose-500/10 border-rose-500/25 text-rose-300"
           }`}
         >
           <div className="flex items-center gap-2">
             {message.type === "success" ? (
-              <Check className="w-4 h-4 shrink-0 text-green-400" />
+              <Check className="w-4 h-4 shrink-0 text-emerald-400" />
             ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             )}
             <span>{message.text}</span>
           </div>
           <button
             onClick={() => setMessage(null)}
-            className="text-xs opacity-70 hover:opacity-100"
+            className="text-[11px] underline opacity-70 hover:opacity-100"
           >
             Dismiss
           </button>
@@ -204,19 +260,19 @@ export default function SettingsPage() {
       )}
 
       {/* 1. Voice Sample Manager */}
-      <div className="p-6 rounded-2xl bg-[#151C2C] border border-[#1E293B] space-y-4">
-        <div className="flex items-center gap-2 text-white font-semibold text-lg border-b border-[#1E293B] pb-3">
-          <Mic className="w-5 h-5 text-purple-400" />
+      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-4">
+        <div className="flex items-center gap-2.5 text-white font-semibold text-base border-b border-white/[0.08] pb-3">
+          <Mic className="w-5 h-5 text-indigo-400" />
           <h2>1. Voice Cloning Reference Sample</h2>
         </div>
 
-        <p className="text-xs text-gray-400 leading-relaxed">
-          Upload a single 15–45 second clean WAV/MP3 recording of your voice speaking clearly without background noise.
-          The agent will clone this timbre for all automated Marathi book summary narrations.
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Upload a clean 15–45 second WAV/MP3 recording of your voice speaking clearly without background noise or music.
+          The pipeline clones this timbre for all Marathi book summary narrations.
         </p>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
-          <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors shadow-lg shadow-purple-600/20 disabled:opacity-50">
+          <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50">
             <Upload className="w-4 h-4" />
             <span>{uploadingVoice ? "Uploading Audio..." : "Upload Voice Sample (.wav/.mp3)"}</span>
             <input
@@ -229,30 +285,30 @@ export default function SettingsPage() {
           </label>
 
           {settings.voice_sample_url && (
-            <span className="text-xs text-green-400 flex items-center gap-1.5 font-medium">
-              <Check className="w-4 h-4" /> Sample Stored in Supabase
+            <span className="text-xs text-emerald-400 flex items-center gap-1.5 font-medium font-mono">
+              <Check className="w-4 h-4" /> Stored in Supabase Bucket
             </span>
           )}
         </div>
 
         {settings.voice_sample_url && (
-          <div className="mt-3 p-3 rounded-xl bg-[#0B0F19] border border-[#1E293B]">
-            <p className="text-xs text-gray-400 mb-2">Current Reference Audio Preview:</p>
-            <audio controls src={settings.voice_sample_url} className="w-full h-9" />
+          <div className="mt-3 p-4 rounded-xl bg-[#09090B] border border-white/[0.08] space-y-2">
+            <p className="text-xs text-zinc-400 font-mono">Current Reference Audio Preview:</p>
+            <audio controls src={settings.voice_sample_url} className="w-full h-9 rounded-lg" />
           </div>
         )}
       </div>
 
       {/* 2. Voice Cloning Server Settings */}
-      <div className="p-6 rounded-2xl bg-[#151C2C] border border-[#1E293B] space-y-4">
-        <div className="flex items-center gap-2 text-white font-semibold text-lg border-b border-[#1E293B] pb-3">
-          <Volume2 className="w-5 h-5 text-blue-400" />
-          <h2>2. Voice Cloning Model / Server</h2>
+      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-4">
+        <div className="flex items-center gap-2.5 text-white font-semibold text-base border-b border-white/[0.08] pb-3">
+          <Volume2 className="w-5 h-5 text-indigo-400" />
+          <h2>2. Voice Cloning Engine Configuration</h2>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 font-mono">
               Cloning Execution Mode
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -261,15 +317,15 @@ export default function SettingsPage() {
                 onClick={() =>
                   setSettings({ ...settings, voice_clone_mode: "external_api" })
                 }
-                className={`p-4 rounded-xl border text-left transition-colors ${
+                className={`p-4 rounded-xl border text-left transition-all ${
                   settings.voice_clone_mode === "external_api"
-                    ? "bg-blue-600/10 border-blue-500 text-white"
-                    : "bg-[#0B0F19] border-[#1E293B] text-gray-400 hover:text-white"
+                    ? "bg-indigo-500/10 border-indigo-500/40 text-white shadow-sm"
+                    : "bg-[#09090B] border-white/[0.08] text-zinc-400 hover:text-white"
                 }`}
               >
-                <div className="font-semibold text-sm">External Server API (Recommended)</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Calls your hosted GitHub voice cloning repo endpoint (RunPod / GPU VM / FastAPI wrapper).
+                <div className="font-semibold text-xs text-white">External Server API (Recommended)</div>
+                <div className="text-[11px] text-zinc-400 mt-1 leading-snug">
+                  Calls your hosted GPU voice cloning endpoint (FastAPI / XTTS-v2 server).
                 </div>
               </button>
 
@@ -278,15 +334,15 @@ export default function SettingsPage() {
                 onClick={() =>
                   setSettings({ ...settings, voice_clone_mode: "github_action_local" })
                 }
-                className={`p-4 rounded-xl border text-left transition-colors ${
+                className={`p-4 rounded-xl border text-left transition-all ${
                   settings.voice_clone_mode === "github_action_local"
-                    ? "bg-blue-600/10 border-blue-500 text-white"
-                    : "bg-[#0B0F19] border-[#1E293B] text-gray-400 hover:text-white"
+                    ? "bg-indigo-500/10 border-indigo-500/40 text-white shadow-sm"
+                    : "bg-[#09090B] border-white/[0.08] text-zinc-400 hover:text-white"
                 }`}
               >
-                <div className="font-semibold text-sm">GitHub Action Local Runner</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Runs Coqui XTTS-v2 directly on the GitHub Actions Ubuntu CPU runner.
+                <div className="font-semibold text-xs text-white">GitHub Action Local Runner</div>
+                <div className="text-[11px] text-zinc-400 mt-1 leading-snug">
+                  Runs local synthesis on the GitHub Actions Ubuntu runner.
                 </div>
               </button>
             </div>
@@ -295,7 +351,7 @@ export default function SettingsPage() {
           {settings.voice_clone_mode === "external_api" && (
             <div className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1 font-mono">
                   Voice Server API Endpoint URL
                 </label>
                 <input
@@ -305,15 +361,12 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setSettings({ ...settings, voice_clone_api_url: e.target.value })
                   }
-                  className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#09090B] border border-white/[0.08] rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
                 />
-                <p className="text-[11px] text-gray-500 mt-1">
-                  Deploy the ready-to-run template in <code className="text-blue-400">voice-server-template/server.py</code> to any GPU host.
-                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1 font-mono">
                   API Key / Bearer Token (Optional)
                 </label>
                 <input
@@ -323,7 +376,7 @@ export default function SettingsPage() {
                   onChange={(e) =>
                     setSettings({ ...settings, voice_clone_api_key: e.target.value })
                   }
-                  className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#09090B] border border-white/[0.08] rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono transition-colors"
                 />
               </div>
             </div>
@@ -335,10 +388,10 @@ export default function SettingsPage() {
               type="button"
               onClick={handleTestVoice}
               disabled={testingVoice || !settings.voice_sample_url}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#0B0F19] hover:bg-[#1E293B] border border-[#1E293B] text-white text-xs font-medium transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#09090B] hover:bg-[#18181D] border border-white/[0.08] text-white text-xs font-mono font-medium transition-colors disabled:opacity-50"
             >
-              <Play className="w-3.5 h-3.5" />
-              <span>{testingVoice ? "Synthesizing Test..." : "Test Voice Cloning (1 Marathi Sentence)"}</span>
+              <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
+              <span>{testingVoice ? "Synthesizing Test..." : "Test Voice Synthesis (1 Marathi Sentence)"}</span>
             </button>
 
             {testAudioUrl && (
@@ -351,35 +404,35 @@ export default function SettingsPage() {
       </div>
 
       {/* 3. YouTube OAuth Channel Connection */}
-      <div className="p-6 rounded-2xl bg-[#151C2C] border border-[#1E293B] space-y-4">
-        <div className="flex items-center gap-2 text-white font-semibold text-lg border-b border-[#1E293B] pb-3">
-          <YoutubeIcon className="w-5 h-5 text-red-500" />
-          <h2>3. YouTube Channel Connection</h2>
+      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-4">
+        <div className="flex items-center gap-2.5 text-white font-semibold text-base border-b border-white/[0.08] pb-3">
+          <YoutubeIcon className="w-5 h-5 text-rose-500" />
+          <h2>3. YouTube Channel Publishing OAuth</h2>
         </div>
 
-        <p className="text-xs text-gray-400 leading-relaxed">
-          Connect your YouTube account to authorize automated video uploads. When authorized, the worker uploads 1080p rendered book summaries directly to your channel.
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Connect your Google account with YouTube Data API v3 permissions. When authorized, the worker uploads 1080p rendered summaries directly to your YouTube channel.
         </p>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#0B0F19] border border-[#1E293B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#09090B] border border-white/[0.08]">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider font-mono">
                 Connection Status:
               </span>
               {settings.youtube_refresh_token ? (
-                <span className="text-xs text-green-400 font-medium flex items-center gap-1">
+                <span className="text-xs text-emerald-400 font-medium flex items-center gap-1 font-mono">
                   <ShieldCheck className="w-4 h-4" /> Connected
                 </span>
               ) : (
-                <span className="text-xs text-amber-400 font-medium flex items-center gap-1">
+                <span className="text-xs text-rose-400 font-medium flex items-center gap-1 font-mono">
                   <AlertCircle className="w-4 h-4" /> Not Connected
                 </span>
               )}
             </div>
 
             {settings.youtube_channel_name && (
-              <p className="text-sm text-white font-medium mt-1">
+              <p className="text-xs text-white font-mono mt-1">
                 Channel: {settings.youtube_channel_name}
               </p>
             )}
@@ -387,7 +440,7 @@ export default function SettingsPage() {
 
           <a
             href="/api/auth/youtube/connect"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors shadow-lg shadow-red-600/20"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-all shadow-lg shadow-rose-600/20"
           >
             <YoutubeIcon className="w-4 h-4" />
             <span>
@@ -398,16 +451,16 @@ export default function SettingsPage() {
       </div>
 
       {/* 4. Automation & Video Preferences */}
-      <div className="p-6 rounded-2xl bg-[#151C2C] border border-[#1E293B] space-y-5">
-        <div className="flex items-center gap-2 text-white font-semibold text-lg border-b border-[#1E293B] pb-3">
-          <Sliders className="w-5 h-5 text-green-400" />
-          <h2>4. Automation & Video Preferences</h2>
+      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-5">
+        <div className="flex items-center gap-2.5 text-white font-semibold text-base border-b border-white/[0.08] pb-3">
+          <Sliders className="w-5 h-5 text-indigo-400" />
+          <h2>4. Automation Cadence & Video Preferences</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Daily Automation Toggle */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 font-mono">
               Daily Automation Schedule
             </label>
             <button
@@ -418,27 +471,27 @@ export default function SettingsPage() {
                   is_daily_automation_enabled: !settings.is_daily_automation_enabled,
                 })
               }
-              className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-colors ${
+              className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
                 settings.is_daily_automation_enabled
-                  ? "bg-green-600/10 border-green-500 text-green-300"
-                  : "bg-[#0B0F19] border-[#1E293B] text-gray-400"
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                  : "bg-[#09090B] border-white/[0.08] text-zinc-400"
               }`}
             >
-              <span className="text-sm font-medium">
-                {settings.is_daily_automation_enabled ? "Enabled" : "Paused"}
+              <span className="text-xs font-medium font-mono">
+                {settings.is_daily_automation_enabled ? "Enabled (04:00 UTC)" : "Paused"}
               </span>
               <span
-                className={`w-3 h-3 rounded-full ${
-                  settings.is_daily_automation_enabled ? "bg-green-400" : "bg-gray-500"
+                className={`w-2.5 h-2.5 rounded-full ${
+                  settings.is_daily_automation_enabled ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]" : "bg-zinc-600"
                 }`}
               />
             </button>
-            <p className="text-[11px] text-gray-500 mt-1">Runs daily via Vercel Cron</p>
+            <p className="text-[11px] text-zinc-500 mt-1 font-mono">Runs 9:30 AM IST daily via Vercel Cron</p>
           </div>
 
           {/* YouTube Privacy Default */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 font-mono">
               Upload Privacy Default
             </label>
             <select
@@ -449,18 +502,18 @@ export default function SettingsPage() {
                   youtube_privacy_status: e.target.value as "private" | "unlisted" | "public",
                 })
               }
-              className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#09090B] border border-white/[0.08] rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
             >
               <option value="private">Private (Recommended for verification)</option>
-              <option value="unlisted">Unlisted (Accessible by link)</option>
+              <option value="unlisted">Unlisted (Accessible by direct link)</option>
               <option value="public">Public (Immediate live publish)</option>
             </select>
-            <p className="text-[11px] text-gray-500 mt-1">Initial visibility on YouTube</p>
+            <p className="text-[11px] text-zinc-500 mt-1 font-mono">Initial visibility on YouTube</p>
           </div>
 
           {/* Video Aspect Ratio */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 font-mono">
               Video Aspect Ratio
             </label>
             <select
@@ -471,12 +524,12 @@ export default function SettingsPage() {
                   video_format: e.target.value as "16:9" | "9:16",
                 })
               }
-              className="w-full bg-[#0B0F19] border border-[#1E293B] rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#09090B] border border-white/[0.08] rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
             >
               <option value="16:9">16:9 Landscape (1920x1080 Standard)</option>
               <option value="9:16">9:16 Vertical (1080x1920 Shorts)</option>
             </select>
-            <p className="text-[11px] text-gray-500 mt-1">Layout format for FFmpeg</p>
+            <p className="text-[11px] text-zinc-500 mt-1 font-mono">FFmpeg resolution profile</p>
           </div>
         </div>
       </div>
@@ -487,7 +540,7 @@ export default function SettingsPage() {
           type="button"
           onClick={() => handleSaveSettings()}
           disabled={saving}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs font-mono transition-all shadow-lg shadow-indigo-600/25 disabled:opacity-50 flex items-center gap-2"
         >
           {saving ? (
             <>
@@ -497,7 +550,7 @@ export default function SettingsPage() {
           ) : (
             <>
               <Check className="w-4 h-4" />
-              <span>Save All Settings</span>
+              <span>Save Studio Settings</span>
             </>
           )}
         </button>

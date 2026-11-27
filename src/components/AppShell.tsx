@@ -27,10 +27,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (authenticated === null) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+      <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-          <span className="text-xs text-gray-500">Checking credentials...</span>
+          <div className="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+          <span className="text-xs font-mono text-zinc-500">Checking credentials...</span>
         </div>
       </div>
     );
@@ -41,9 +41,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-[#E2E8F0]">
+    <div className="min-h-screen bg-[#09090B] text-zinc-100">
       <Sidebar />
-      <main className="md:pl-60 min-h-screen flex flex-col">
+      <main className="md:pl-[260px] min-h-screen flex flex-col">
         <div className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
           {children}
         </div>

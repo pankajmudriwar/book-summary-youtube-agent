@@ -36,12 +36,12 @@ def generate_timestamps_with_gemini(audio_path: str, script: str) -> list[dict]:
     """
     try:
         from google import genai
-        import base64
+        from google.genai import types
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
         with open(audio_path, "rb") as f:
-            audio_data = base64.b64encode(f.read()).decode()
+            audio_bytes = f.read()
 
         prompt = f"""You are given a Marathi narration audio and its exact script text.
 Your task: produce precise timestamps for every 3-5 word phrase from the script,
@@ -63,16 +63,18 @@ Rules:
 
 Output ONLY the JSON array, nothing else."""
 
-        interaction = client.interactions.create(
-            model="gemini-4-hydrogen",
-            input=[
-                {"mime_type": "audio/wav", "data": audio_data},
-                prompt
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=[
+                types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"),
+                prompt,
             ],
-            config={"response_mime_type": "application/json"},
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
         )
 
-        result_text = interaction.output_text
+        result_text = response.text or ""
         # Clean up response
         result_text = result_text.strip()
         if result_text.startswith("```"):

@@ -58,6 +58,17 @@ export interface AgentSettings {
   youtube_channel_name: string | null;
   youtube_refresh_token: string | null;
   updated_at: string;
+  readiness?: {
+    isReady: boolean;
+    missing: string[];
+    details: {
+      gemini: boolean;
+      github: boolean;
+      voiceSample: boolean;
+      voiceApi: boolean;
+      youtube: boolean;
+    };
+  };
 }
 
 export interface PipelineLog {
