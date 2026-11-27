@@ -168,7 +168,14 @@ export default function BookRow({ book, onRefresh }: BookRowProps) {
 
             <p className="text-xs text-zinc-400 mt-1 truncate">
               {book.author ? `by ${book.author}` : "Author not specified"} • Added{" "}
-              {new Date(book.created_at).toLocaleDateString()}
+              {book.created_at ? (() => {
+                try {
+                  const d = new Date(book.created_at);
+                  return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString();
+                } catch {
+                  return "Recently";
+                }
+              })() : "Recently"}
             </p>
 
             {book.error_message && (
@@ -424,7 +431,14 @@ export default function BookRow({ book, onRefresh }: BookRowProps) {
                     >
                       <div className="flex items-center justify-between text-[11px] text-zinc-500 mb-1">
                         <span className="uppercase font-bold text-zinc-400">[{log.stage}]</span>
-                        <span>{new Date(log.created_at).toLocaleTimeString()}</span>
+                        <span>{log.created_at ? (() => {
+                          try {
+                            const d = new Date(log.created_at);
+                            return isNaN(d.getTime()) ? "Just now" : d.toLocaleTimeString();
+                          } catch {
+                            return "Just now";
+                          }
+                        })() : "Just now"}</span>
                       </div>
                       <p className="leading-snug text-xs">{log.message}</p>
                     </div>

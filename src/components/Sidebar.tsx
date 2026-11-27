@@ -160,7 +160,7 @@ export default function Sidebar() {
               <span className="flex items-center gap-1.5">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    readiness?.checks.youtubeConnected
+                    readiness?.checks?.youtubeConnected || readiness?.details?.youtube
                       ? "bg-emerald-400"
                       : "bg-rose-500"
                   }`}
@@ -169,12 +169,14 @@ export default function Sidebar() {
               </span>
               <span
                 className={`text-[10px] ${
-                  readiness?.checks.youtubeConnected
+                  readiness?.checks?.youtubeConnected || readiness?.details?.youtube
                     ? "text-emerald-400"
                     : "text-rose-400"
                 }`}
               >
-                {readiness?.checks.youtubeConnected ? "Connected" : "Needed"}
+                {readiness?.checks?.youtubeConnected || readiness?.details?.youtube
+                  ? "Connected"
+                  : "Needed"}
               </span>
             </div>
 
@@ -183,7 +185,7 @@ export default function Sidebar() {
               <span className="flex items-center gap-1.5">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    readiness?.checks.voiceSample
+                    readiness?.checks?.voiceSample || readiness?.details?.voiceSample
                       ? "bg-emerald-400"
                       : "bg-amber-400"
                   }`}
@@ -192,12 +194,14 @@ export default function Sidebar() {
               </span>
               <span
                 className={`text-[10px] ${
-                  readiness?.checks.voiceSample
+                  readiness?.checks?.voiceSample || readiness?.details?.voiceSample
                     ? "text-emerald-400"
                     : "text-amber-400"
                 }`}
               >
-                {readiness?.checks.voiceSample ? "Ready" : "Missing"}
+                {readiness?.checks?.voiceSample || readiness?.details?.voiceSample
+                  ? "Ready"
+                  : "Missing"}
               </span>
             </div>
 
@@ -206,7 +210,7 @@ export default function Sidebar() {
               <span className="flex items-center gap-1.5">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    readiness?.checks.cronEnabled
+                    readiness?.checks?.cronEnabled || readiness?.details?.cronEnabled
                       ? "bg-emerald-400"
                       : "bg-zinc-600"
                   }`}
@@ -215,12 +219,14 @@ export default function Sidebar() {
               </span>
               <span
                 className={`text-[10px] ${
-                  readiness?.checks.cronEnabled
+                  readiness?.checks?.cronEnabled || readiness?.details?.cronEnabled
                     ? "text-emerald-400"
                     : "text-zinc-500"
                 }`}
               >
-                {readiness?.checks.cronEnabled ? "Active" : "Paused"}
+                {readiness?.checks?.cronEnabled || readiness?.details?.cronEnabled
+                  ? "Active"
+                  : "Paused"}
               </span>
             </div>
           </div>

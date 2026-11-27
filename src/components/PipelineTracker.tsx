@@ -251,7 +251,15 @@ export default function PipelineTracker({
                 </div>
               ) : (
                 logs.map((log) => {
-                  const time = new Date(log.created_at).toLocaleTimeString();
+                  let time = "Just now";
+                  try {
+                    if (log.created_at) {
+                      const d = new Date(log.created_at);
+                      if (!isNaN(d.getTime())) time = d.toLocaleTimeString();
+                    }
+                  } catch {
+                    // ignore
+                  }
                   const isErr = log.level === "error";
                   const isWarn = log.level === "warning";
 

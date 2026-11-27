@@ -205,29 +205,29 @@ export default function SettingsPage() {
             {/* Gemini */}
             <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
               <span className="text-zinc-400">Gemini API</span>
-              <span className={readiness.checks.geminiKey ? "text-emerald-400" : "text-rose-400"}>
-                {readiness.checks.geminiKey ? "Connected" : "Missing"}
+              <span className={readiness?.checks?.geminiKey || readiness?.details?.gemini ? "text-emerald-400" : "text-rose-400"}>
+                {readiness?.checks?.geminiKey || readiness?.details?.gemini ? "Connected" : "Missing"}
               </span>
             </div>
             {/* GitHub */}
             <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
               <span className="text-zinc-400">GitHub Actions</span>
-              <span className={readiness.checks.githubConfig ? "text-emerald-400" : "text-rose-400"}>
-                {readiness.checks.githubConfig ? "Configured" : "Missing"}
+              <span className={readiness?.checks?.githubConfig || readiness?.details?.github ? "text-emerald-400" : "text-rose-400"}>
+                {readiness?.checks?.githubConfig || readiness?.details?.github ? "Configured" : "Missing"}
               </span>
             </div>
             {/* Voice */}
             <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
               <span className="text-zinc-400">Voice Sample</span>
-              <span className={readiness.checks.voiceSample ? "text-emerald-400" : "text-amber-400"}>
-                {readiness.checks.voiceSample ? "Ready" : "Missing"}
+              <span className={readiness?.checks?.voiceSample || readiness?.details?.voiceSample ? "text-emerald-400" : "text-amber-400"}>
+                {readiness?.checks?.voiceSample || readiness?.details?.voiceSample ? "Ready" : "Missing"}
               </span>
             </div>
             {/* YouTube */}
             <div className="p-3 rounded-xl bg-[#09090B] border border-white/[0.06] flex items-center justify-between">
               <span className="text-zinc-400">YouTube Auth</span>
-              <span className={readiness.checks.youtubeConnected ? "text-emerald-400" : "text-rose-400"}>
-                {readiness.checks.youtubeConnected ? "Connected" : "Needed"}
+              <span className={readiness?.checks?.youtubeConnected || readiness?.details?.youtube ? "text-emerald-400" : "text-rose-400"}>
+                {readiness?.checks?.youtubeConnected || readiness?.details?.youtube ? "Connected" : "Needed"}
               </span>
             </div>
           </div>

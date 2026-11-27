@@ -150,14 +150,34 @@ export default function DashboardPage() {
 
   // Last job status: find the most recently updated non-pending book
   const lastProcessedBook = useMemo(() => {
-    const nonPending = books.filter((b) => b.status !== "pending");
+    const nonPending = books.filter((b) => b && b.status !== "pending");
     if (nonPending.length === 0) return null;
-    return nonPending.reduce((latest, current) =>
-      new Date(current.updated_at) > new Date(latest.updated_at)
-        ? current
-        : latest
-    );
+    return nonPending.reduce((latest, current) => {
+      const currentMs = current.updated_at ? new Date(current.updated_at).getTime() : 0;
+      const latestMs = latest.updated_at ? new Date(latest.updated_at).getTime() : 0;
+      return currentMs > latestMs ? current : latest;
+    });
   }, [books]);
+
+  function formatTimeSafe(dateStr?: string | null): string {
+    if (!dateStr) return "Just now";
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? "Just now" : d.toLocaleTimeString();
+    } catch {
+      return "Just now";
+    }
+  }
+
+  function formatDateSafe(dateStr?: string | null): string {
+    if (!dateStr) return "Published";
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? "Published" : d.toLocaleDateString();
+    } catch {
+      return "Published";
+    }
+  }
 
   const readiness = settings?.readiness;
   const isSetupIncomplete = readiness && !readiness.isReady;
@@ -234,7 +254,7 @@ export default function DashboardPage() {
               <p className="text-xs text-amber-300/80 mt-0.5">
                 Missing required dependencies:{" "}
                 <strong className="text-amber-200">
-                  {readiness.missingRequirements.join(", ")}
+                  {(readiness.missingRequirements || readiness.missing || []).join(", ")}
                 </strong>
                 . Complete configuration before triggering pipeline.
               </p>
@@ -442,7 +462,7 @@ export default function DashboardPage() {
                     {activeBook.author ? `by ${activeBook.author}` : "Marathi Summary Pipeline"}
                   </p>
                   <span className="text-[10px] font-mono text-indigo-400 mt-1 block">
-                    Last state change: {new Date(activeBook.updated_at).toLocaleTimeString()}
+                    Last state change: {formatTimeSafe(activeBook.updated_at)}
                   </span>
                 </div>
               </div>
@@ -478,7 +498,7 @@ export default function DashboardPage() {
                     Execution failed: {lastProcessedBook.error_message || "Unknown error"}
                   </p>
                   <span className="text-[10px] font-mono text-zinc-500 mt-1 block">
-                    Failed at: {new Date(lastProcessedBook.updated_at).toLocaleTimeString()}
+                    Failed at: {formatTimeSafe(lastProcessedBook.updated_at)}
                   </span>
                 </div>
               </div>
@@ -561,9 +581,7 @@ export default function DashboardPage() {
                         {book.author ? `by ${book.author}` : "Marathi Summary"}
                       </p>
                       <p className="text-[10px] font-mono text-zinc-500 mt-1">
-                        {book.published_at
-                          ? new Date(book.published_at).toLocaleDateString()
-                          : "Published"}
+                        {formatDateSafe(book.published_at)}
                       </p>
                     </div>
                   </div>

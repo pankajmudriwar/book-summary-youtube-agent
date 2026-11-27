@@ -3,12 +3,22 @@ import type { AgentSettings } from "./types";
 export interface ReadinessCheckResult {
   isReady: boolean;
   missing: string[];
+  missingRequirements: string[];
   details: {
     gemini: boolean;
     github: boolean;
     voiceSample: boolean;
     voiceApi: boolean;
     youtube: boolean;
+    cronEnabled: boolean;
+  };
+  checks: {
+    geminiKey: boolean;
+    githubConfig: boolean;
+    voiceSample: boolean;
+    youtubeConnected: boolean;
+    externalVoiceApi: boolean;
+    cronEnabled: boolean;
   };
 }
 
@@ -46,15 +56,27 @@ export function checkSystemReadiness(settings: AgentSettings | null): ReadinessC
     missing.push("YouTube channel is not connected in Settings");
   }
 
+  const cronEnabled = Boolean(settings?.is_daily_automation_enabled);
+
   return {
     isReady: missing.length === 0,
     missing,
+    missingRequirements: missing,
     details: {
       gemini,
       github,
       voiceSample,
       voiceApi,
       youtube,
+      cronEnabled,
+    },
+    checks: {
+      geminiKey: gemini,
+      githubConfig: github,
+      voiceSample,
+      youtubeConnected: youtube,
+      externalVoiceApi: voiceApi,
+      cronEnabled,
     },
   };
 }

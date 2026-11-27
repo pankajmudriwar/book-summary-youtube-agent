@@ -61,12 +61,22 @@ export interface AgentSettings {
   readiness?: {
     isReady: boolean;
     missing: string[];
+    missingRequirements?: string[];
     details: {
       gemini: boolean;
       github: boolean;
       voiceSample: boolean;
       voiceApi: boolean;
       youtube: boolean;
+      cronEnabled?: boolean;
+    };
+    checks?: {
+      geminiKey: boolean;
+      githubConfig: boolean;
+      voiceSample: boolean;
+      youtubeConnected: boolean;
+      externalVoiceApi: boolean;
+      cronEnabled: boolean;
     };
   };
 }
