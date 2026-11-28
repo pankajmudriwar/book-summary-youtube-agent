@@ -5,7 +5,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+  
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const requestOrigin = host ? `${proto}://${host}` : new URL(request.url).origin;
+  const baseUrl = requestOrigin || process.env.NEXT_PUBLIC_APP_URL;
 
   if (error) {
     return NextResponse.redirect(
@@ -19,9 +23,10 @@ export async function GET(request: Request) {
     );
   }
 
-  // Retrieve client credentials from process.env or fallback cookie
+  // Retrieve client credentials and redirect_uri from process.env or fallback cookie
   let clientId = (process.env.YOUTUBE_CLIENT_ID || "").trim();
   let clientSecret = (process.env.YOUTUBE_CLIENT_SECRET || "").trim();
+  let savedRedirectUri = "";
 
   // Try reading from yt_oauth_ctx cookie if missing from env
   const cookieHeader = request.headers.get("cookie") || "";
@@ -32,6 +37,7 @@ export async function GET(request: Request) {
       const parsed = JSON.parse(decoded);
       if (!clientId && parsed.clientId) clientId = parsed.clientId;
       if (!clientSecret && parsed.clientSecret) clientSecret = parsed.clientSecret;
+      if (parsed.redirectUri) savedRedirectUri = parsed.redirectUri;
     } catch (e) {
       console.warn("Could not parse yt_oauth_ctx cookie:", e);
     }
@@ -43,6 +49,8 @@ export async function GET(request: Request) {
     );
   }
 
+  const effectiveRedirectUri = savedRedirectUri || `${baseUrl}/api/auth/youtube/callback`;
+
   try {
     // Exchange authorization code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -52,7 +60,7 @@ export async function GET(request: Request) {
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: `${baseUrl}/api/auth/youtube/callback`,
+        redirect_uri: effectiveRedirectUri,
         grant_type: "authorization_code",
       }),
     });

@@ -12,6 +12,10 @@ import {
   AlertCircle,
   Play,
   ShieldCheck,
+  Copy,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import YoutubeIcon from "@/components/YoutubeIcon";
 
@@ -30,6 +34,10 @@ export default function SettingsPage() {
   // YouTube OAuth credentials input state
   const [ytClientId, setYtClientId] = useState("");
   const [ytClientSecret, setYtClientSecret] = useState("");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showManualToken, setShowManualToken] = useState(false);
+  const [manualToken, setManualToken] = useState("");
+  const [manualChannel, setManualChannel] = useState("");
 
   // Voice cloning test
   const [testingVoice, setTestingVoice] = useState(false);
@@ -79,6 +87,64 @@ export default function SettingsPage() {
     setYtClientSecret(secret);
     if (id) localStorage.setItem("yt_client_id", id.trim());
     if (secret) localStorage.setItem("yt_client_secret", secret.trim());
+  }
+
+  function copyToClipboard(text: string, label: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedField(label);
+      setTimeout(() => setCopiedField(null), 2500);
+    }
+  }
+
+  async function handleSaveManualToken() {
+    if (!settings || !manualToken.trim()) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          youtube_refresh_token: manualToken.trim(),
+          youtube_channel_name: manualChannel.trim() || settings.youtube_channel_name || "Connected Channel",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save YouTube token");
+      setSettings(data);
+      setMessage({ type: "success", text: "YouTube Refresh Token saved successfully! Channel connected." });
+      setManualToken("");
+    } catch (err: unknown) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed to save token" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDisconnectYouTube() {
+    if (!settings) return;
+    if (!window.confirm("Are you sure you want to disconnect your YouTube channel?")) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          youtube_refresh_token: null,
+          youtube_channel_name: null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to disconnect YouTube");
+      setSettings(data);
+      setMessage({ type: "success", text: "YouTube channel disconnected successfully." });
+    } catch (err: unknown) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed to disconnect YouTube" });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSaveSettings(e?: React.FormEvent) {
@@ -436,15 +502,106 @@ export default function SettingsPage() {
       </div>
 
       {/* 3. YouTube OAuth Channel Connection */}
-      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-4">
-        <div className="flex items-center gap-2.5 text-white font-semibold text-base border-b border-white/[0.08] pb-3">
-          <YoutubeIcon className="w-5 h-5 text-rose-500" />
-          <h2>3. YouTube Channel Publishing OAuth</h2>
+      <div className="p-6 rounded-2xl bg-[#111114] border border-white/[0.08] space-y-5">
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+          <div className="flex items-center gap-2.5 text-white font-semibold text-base">
+            <YoutubeIcon className="w-5 h-5 text-rose-500" />
+            <h2>3. YouTube Channel Publishing OAuth</h2>
+          </div>
+          {settings.youtube_refresh_token ? (
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" /> Channel Authorized
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" /> Action Required
+            </span>
+          )}
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
           Connect your Google account with YouTube Data API v3 permissions. When authorized, the worker uploads 1080p rendered summaries directly to your YouTube channel.
         </p>
+
+        {/* Google Cloud Console Setup Guidance */}
+        <div className="p-4 rounded-xl bg-[#09090B] border border-amber-500/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400 font-mono flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" /> Google Cloud Console Configuration (Fixes Error 400: redirect_uri_mismatch)
+            </span>
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-indigo-400 hover:text-indigo-300 font-mono flex items-center gap-1 underline"
+            >
+              <span>Open Credentials</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
+            In Google Cloud Console under your OAuth 2.0 Client ID, you must register these exact URLs character-for-character:
+          </p>
+
+          <div className="space-y-2 text-xs font-mono">
+            {/* JavaScript Origin */}
+            <div className="p-2.5 rounded-lg bg-[#111114] border border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="overflow-hidden">
+                <span className="text-[10px] text-zinc-500 block uppercase">1. Authorized JavaScript origin</span>
+                <code className="text-zinc-200 text-[11px] truncate block">
+                  {typeof window !== "undefined" ? window.location.origin : "https://book-summary-youtube-agent.vercel.app"}
+                </code>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  copyToClipboard(
+                    typeof window !== "undefined"
+                      ? window.location.origin
+                      : "https://book-summary-youtube-agent.vercel.app",
+                    "origin"
+                  )
+                }
+                className="px-2.5 py-1 rounded bg-[#18181D] hover:bg-[#222228] border border-white/[0.08] text-zinc-300 text-[11px] flex items-center gap-1 shrink-0 transition-colors"
+              >
+                {copiedField === "origin" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedField === "origin" ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+
+            {/* Redirect URI */}
+            <div className="p-2.5 rounded-lg bg-[#111114] border border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="overflow-hidden">
+                <span className="text-[10px] text-zinc-500 block uppercase">2. Authorized redirect URI</span>
+                <code className="text-indigo-400 text-[11px] truncate block font-bold">
+                  {typeof window !== "undefined"
+                    ? `${window.location.origin}/api/auth/youtube/callback`
+                    : "https://book-summary-youtube-agent.vercel.app/api/auth/youtube/callback"}
+                </code>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  copyToClipboard(
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/api/auth/youtube/callback`
+                      : "https://book-summary-youtube-agent.vercel.app/api/auth/youtube/callback",
+                    "redirect"
+                  )
+                }
+                className="px-2.5 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-[11px] flex items-center gap-1 shrink-0 transition-colors"
+              >
+                {copiedField === "redirect" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedField === "redirect" ? "Copied" : "Copy URI"}</span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-zinc-500 font-mono">
+            * Note: After saving in Google Cloud Console, click &apos;Save&apos; at the bottom of Google&apos;s page and wait ~60 seconds for Google to propagate. Also ensure your email is added under &apos;OAuth consent screen &gt; Test users&apos; if your app status is &apos;Testing&apos;.
+          </p>
+        </div>
 
         {/* OAuth Client ID and Secret inputs */}
         <div className="p-4 rounded-xl bg-[#09090B] border border-white/[0.08] space-y-3">
@@ -477,11 +634,9 @@ export default function SettingsPage() {
               />
             </div>
           </div>
-          <p className="text-[10px] text-zinc-500 font-mono">
-            Redirect URI in Google Cloud Console must be: <code className="text-indigo-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/auth/youtube/callback</code>
-          </p>
         </div>
 
+        {/* Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#09090B] border border-white/[0.08]">
           <div>
             <div className="flex items-center gap-2">
@@ -501,26 +656,101 @@ export default function SettingsPage() {
 
             {settings.youtube_channel_name && (
               <p className="text-xs text-white font-mono mt-1">
-                Channel: {settings.youtube_channel_name}
+                Channel: <span className="font-semibold text-emerald-300">{settings.youtube_channel_name}</span>
               </p>
             )}
           </div>
 
-          <a
-            href={
-              ytClientId
-                ? `/api/auth/youtube/connect?client_id=${encodeURIComponent(
-                    ytClientId.trim()
-                  )}&client_secret=${encodeURIComponent(ytClientSecret.trim())}`
-                : `/api/auth/youtube/connect`
-            }
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-all shadow-lg shadow-rose-600/20"
+          <div className="flex items-center gap-2">
+            {settings.youtube_refresh_token && (
+              <button
+                type="button"
+                onClick={handleDisconnectYouTube}
+                disabled={saving}
+                className="px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono transition-colors"
+              >
+                Disconnect
+              </button>
+            )}
+
+            <a
+              href={
+                ytClientId
+                  ? `/api/auth/youtube/connect?client_id=${encodeURIComponent(
+                      ytClientId.trim()
+                    )}&client_secret=${encodeURIComponent(
+                      ytClientSecret.trim()
+                    )}&redirect_uri=${encodeURIComponent(
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/api/auth/youtube/callback`
+                        : "https://book-summary-youtube-agent.vercel.app/api/auth/youtube/callback"
+                    )}`
+                  : `/api/auth/youtube/connect`
+              }
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-all shadow-lg shadow-rose-600/20"
+            >
+              <YoutubeIcon className="w-4 h-4" />
+              <span>
+                {settings.youtube_refresh_token ? "Reconnect Channel" : "Connect YouTube Channel"}
+              </span>
+            </a>
+          </div>
+        </div>
+
+        {/* Collapsible Manual Refresh Token Entry (Alternative/Bypass) */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowManualToken(!showManualToken)}
+            className="text-xs font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5 transition-colors"
           >
-            <YoutubeIcon className="w-4 h-4" />
-            <span>
-              {settings.youtube_refresh_token ? "Reconnect Channel" : "Connect YouTube Channel"}
-            </span>
-          </a>
+            {showManualToken ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>Manual Refresh Token Input (Alternative / Direct Token Entry)</span>
+          </button>
+
+          {showManualToken && (
+            <div className="mt-3 p-4 rounded-xl bg-[#09090B] border border-white/[0.08] space-y-3 animate-fade-in">
+              <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
+                If you already have a YouTube OAuth Refresh Token (e.g. from Google OAuth 2.0 Playground or previous setup), you can paste it directly here without using the browser redirect flow.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1 font-mono">
+                    YouTube OAuth Refresh Token (1//...)
+                  </label>
+                  <input
+                    type="password"
+                    value={manualToken}
+                    onChange={(e) => setManualToken(e.target.value)}
+                    placeholder="Paste refresh token directly (starts with 1//...)"
+                    className="w-full bg-[#111114] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1 font-mono">
+                    Channel Display Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={manualChannel}
+                    onChange={(e) => setManualChannel(e.target.value)}
+                    placeholder="e.g. Marathi Gyanvani"
+                    className="w-full bg-[#111114] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveManualToken}
+                    disabled={saving || !manualToken.trim()}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-medium disabled:opacity-50 transition-colors"
+                  >
+                    Save Refresh Token Directly
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
