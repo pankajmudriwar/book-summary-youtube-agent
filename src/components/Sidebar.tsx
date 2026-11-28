@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   ExternalLink,
+  Smartphone,
 } from "lucide-react";
 import YoutubeIcon from "./YoutubeIcon";
 import type { SystemReadiness } from "@/lib/types";
@@ -231,15 +232,31 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-zinc-400">
-            <span>Studio v1.2</span>
-            <Link
-              href="/settings"
-              className="text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5"
+          <div className="pt-2 border-t border-white/[0.04] space-y-2 text-[10px] text-zinc-400">
+            <div className="flex items-center justify-between">
+              <span>Studio v1.2</span>
+              <Link
+                href="/settings"
+                className="text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5"
+              >
+                <span>Setup</span>
+                <ExternalLink size={10} />
+              </Link>
+            </div>
+
+            <a
+              href="/marathi-studio.apk"
+              download="marathi-studio.apk"
+              className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] text-zinc-300 transition-colors"
             >
-              <span>Setup</span>
-              <ExternalLink size={10} />
-            </Link>
+              <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                <Smartphone size={12} className="text-emerald-400" />
+                <span>Android App</span>
+              </span>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                APK
+              </span>
+            </a>
           </div>
         </div>
       </aside>
